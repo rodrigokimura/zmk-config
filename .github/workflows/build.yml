@@ -53,6 +53,12 @@ jobs:
           ls -la zmk/ 2>/dev/null || echo "NO ZMK DIR"
           echo "=== west config ==="
           cat .west/config
+          echo "=== find shields ==="
+          find . -name "Kconfig.shield" 2>/dev/null | head -20
+          echo "=== config dir ==="
+          ls -la config/
+          echo "=== config/boards ==="
+          ls -la config/boards/ 2>/dev/null || echo "NO config/boards"
       - name: West Zephyr export
         run: west zephyr-export
       - name: West build (${{ matrix.shield }})
