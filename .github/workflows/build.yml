@@ -45,6 +45,14 @@ jobs:
         run: west init -l .
       - name: West Update
         run: west update
+      - name: Debug workspace
+        run: |
+          echo "=== workspace ==="
+          ls -la
+          echo "=== zmk dir ==="
+          ls -la zmk/ 2>/dev/null || echo "NO ZMK DIR"
+          echo "=== west config ==="
+          cat .west/config
       - name: West Zephyr export
         run: west zephyr-export
       - name: West build (${{ matrix.shield }})
