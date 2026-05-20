@@ -1,4 +1,4 @@
-name: ZMK Config
+name: Build
 
 on:
   push:
@@ -13,11 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: zmkfirmware/zmk-build-arm:stable
-    needs: matrix
-    name: Build (${{ matrix.shield }})
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
+      matrix:
+        include:
+          - board: nice_nano
+            shield: roki_left
+          - board: nice_nano
+            shield: roki_right
+    name: Build (${{ matrix.shield }})
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +36,7 @@ jobs:
             zephyr/
             bootloader/
             zmk/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('manifest-dir/west.yml') }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('manifest-dir/west.yml', 'west.yml') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
@@ -45,22 +49,19 @@ jobs:
         run: west zephyr-export
       - name: West build (${{ matrix.shield }})
         run: west build -s zmk/app -b ${{ matrix.board }} -- -DSHIELD=${{ matrix.shield }}
-      - name: Rename artifacts
-        run: cp build/zephyr/zmk.uf2 ${{ matrix.shield }}-${{ matrix.board }}.uf2
       - name: Archive (${{ matrix.shield }})
         uses: actions/upload-artifact@v4
         with:
           name: firmware
-          path: ${{ matrix.shield }}-${{ matrix.board }}.uf2
-
-  matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install yaml2json
-        run: python3 -c "import yaml; import json; import sys; json.dump(yaml.safe_load(open(sys.argv[1])), sys.stdout)" build.yaml > build.json
-      - id: set-matrix
-        run: echo "matrix=$(cat build.json | tr -s '\n' ' ')" >> $GITHUB_OUTPUT
+          path: build/zephyr/zmk.uf2
+          if-no-files-found: error
+      - name: Rename artifacts
+        run: |
+          mkdir -p artifacts
+          cp build/zephyr/zmk.uf2 artifacts/${{ matrix.shield }}-${{ matrix.board }}.uf2
+      - name: Archive named
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.shield }}-${{ matrix.board }}
+          path: artifacts/${{ matrix.shield }}-${{ matrix.board }}.uf2
+          if-no-files-found: error
