@@ -1,0 +1,32 @@
+if SHIELD_ROKI_LEFT
+
+config ZMK_KEYBOARD_NAME
+	default "RoKi"
+
+config ZMK_SPLIT_ROLE_CENTRAL
+	default y
+
+endif
+
+if SHIELD_ROKI_RIGHT
+
+config ZMK_KEYBOARD_NAME
+	default "RoKi"
+
+endif
+
+if SHIELD_ROKI_LEFT || SHIELD_ROKI_RIGHT
+
+config ZMK_SPLIT
+	default y
+
+if ZMK_ENCODER
+
+config EC11
+	default y
+
+config EC11_TRIGGER_GLOBAL_THREAD
+	default y
+
+endif
+endif

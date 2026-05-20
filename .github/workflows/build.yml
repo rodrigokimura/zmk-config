@@ -1,0 +1,66 @@
+name: ZMK Config
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: zmkfirmware/zmk-build-arm:stable
+    needs: matrix
+    name: Build (${{ matrix.shield }})
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache west modules
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-zephyr-modules
+        with:
+          path: |
+            modules/
+            tools/
+            zephyr/
+            bootloader/
+            zmk/
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('manifest-dir/west.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+      - name: West Init
+        run: west init -l config
+      - name: West Update
+        run: west update
+      - name: West Zephyr export
+        run: west zephyr-export
+      - name: West build (${{ matrix.shield }})
+        run: west build -s zmk/app -b ${{ matrix.board }} -- -DSHIELD=${{ matrix.shield }}
+      - name: Rename artifacts
+        run: cp build/zephyr/zmk.uf2 ${{ matrix.shield }}-${{ matrix.board }}.uf2
+      - name: Archive (${{ matrix.shield }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: ${{ matrix.shield }}-${{ matrix.board }}.uf2
+
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install yaml2json
+        run: python3 -c "import yaml; import json; import sys; json.dump(yaml.safe_load(open(sys.argv[1])), sys.stdout)" build.yaml > build.json
+      - id: set-matrix
+        run: echo "matrix=$(cat build.json | tr -s '\n' ' ')" >> $GITHUB_OUTPUT
